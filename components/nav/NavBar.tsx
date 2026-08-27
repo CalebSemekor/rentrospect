@@ -82,11 +82,11 @@ const NavBar = ({ location }: { location: string }) => {
                     />
 
                     <NavButtonLink
-                        href='/profile'
-                        alt='user icon'
-                        label='Profile'
+                        href='/renter/settings'
+                        alt='settings'
+                        label='Settings'
                         icon='/svgs/nav/user-active.svg'
-                        active={pathname === '/profile'}
+                        active={pathname.startsWith('/renter/settings')}
                         inactiveIcon='/svgs/nav/user.svg'
                     />
                 </div>

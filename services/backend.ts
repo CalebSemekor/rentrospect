@@ -1,5 +1,7 @@
 import type { LoneAsset } from '@/types/asset';
 import type { VendorProfile, CatalogAsset, VendorLogistics, ReviewableAsset, AssetReview, ReviewReply } from '@/types/profile';
+import type { AccountDetails, SecuritySettings } from '@/types/account';
+import type { NotificationSettings } from '@/types/notifications';
 
 const BASE_URL = process.env.NEXT_PUBLIC_MASTER || '';
 
@@ -462,5 +464,155 @@ export async function postReviewReply(token: string, reviewId: string, comment: 
   } catch (error) {
     console.error(error);
     return null;
+  }
+}
+
+// --- Renter Account Settings (/renter/settings/account) -------------------
+// DUMMY routes (`client/account*`) — swap once the backend ships them.
+// Password changes deliberately do NOT go through here — Clerk owns
+// credentials, so PasswordSection calls `user.updatePassword()` directly.
+
+export async function getAccountDetails(token: string): Promise<AccountDetails | null> {
+  try {
+    const response = await fetch(`${BASE_URL}client/account`, {
+      method: 'GET',
+      cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch account details');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function updateAccountDetails(
+  token: string,
+  details: AccountDetails,
+  profilePic?: File | null
+): Promise<boolean> {
+  try {
+    const formData = new FormData();
+    formData.append('accountDetails', JSON.stringify(details));
+    if (profilePic) formData.append('profile_pic', profilePic);
+
+    // No Content-Type header — the browser sets multipart/form-data with the
+    // correct boundary itself when the body is a FormData instance.
+    const response = await fetch(`${BASE_URL}client/account`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+export async function getSecuritySettings(token: string): Promise<SecuritySettings | null> {
+  try {
+    const response = await fetch(`${BASE_URL}client/account/security`, {
+      method: 'GET',
+      cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch security settings');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function updateSecuritySettings(token: string, settings: SecuritySettings): Promise<boolean> {
+  try {
+    const response = await fetch(`${BASE_URL}client/account/security`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(settings),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+export async function deactivateAccount(token: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${BASE_URL}client/account/deactivate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+// --- Renter Notification Settings (/renter/settings/notifications) --------
+// DUMMY route — swap once the backend ships it.
+
+export async function getNotificationSettings(token: string): Promise<NotificationSettings | null> {
+  try {
+    const response = await fetch(`${BASE_URL}client/notifications`, {
+      method: 'GET',
+      cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch notification settings');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+export async function updateNotificationSettings(token: string, settings: NotificationSettings): Promise<boolean> {
+  try {
+    const response = await fetch(`${BASE_URL}client/notifications`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(settings),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error(error);
+    return false;
   }
 }
