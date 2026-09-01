@@ -110,6 +110,24 @@ const dailyRateMultiplier = (days: number): number => {
   return multiplier;
 };
 
+// Bulk-quantity discount: unlike the daily tiers above, this isn't
+// cumulative — the whole order gets whichever bracket its quantity falls
+// into, applied as a % of the per-unit rate. ("20+" in the source table
+// reads as "21+" here so the 11-20 bracket isn't double-covered.)
+const QUANTITY_RATE_TIERS: { minQty: number; maxQty: number; percentOfRate: number }[] = [
+  { minQty: 1, maxQty: 1, percentOfRate: 1.0 },
+  { minQty: 2, maxQty: 2, percentOfRate: 0.95 },
+  { minQty: 3, maxQty: 5, percentOfRate: 0.9 },
+  { minQty: 6, maxQty: 10, percentOfRate: 0.8 },
+  { minQty: 11, maxQty: 20, percentOfRate: 0.7 },
+  { minQty: 21, maxQty: Infinity, percentOfRate: 0.6 },
+];
+
+const quantityRateMultiplier = (quantity: number): number => {
+  const tier = QUANTITY_RATE_TIERS.find((t) => quantity >= t.minQty && quantity <= t.maxQty);
+  return tier ? tier.percentOfRate : 1.0;
+};
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 function CheckoutPageInner() {
@@ -147,13 +165,14 @@ function CheckoutPageInner() {
 
   // Day-priced assets use the degressive tiered rate; week/month/semester
   // pricing still uses a flat units × rate, since no tiering was specified
-  // for those.
+  // for those. The bulk-quantity discount applies on top of either.
   const lineTotal = useMemo(() => {
+    const effectiveRate = rate * quantityRateMultiplier(quantity);
     if (pricingUnit === "day") {
-      return rate * quantity * dailyRateMultiplier(days);
+      return effectiveRate * quantity * dailyRateMultiplier(days);
     }
     const units = computeUnits(startDate, endDate, pricingUnit);
-    return rate * quantity * units;
+    return effectiveRate * quantity * units;
   }, [rate, quantity, pricingUnit, days, startDate, endDate]);
 
   // Always expressed in days, regardless of the asset's own pricingUnit —
