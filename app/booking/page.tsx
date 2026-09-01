@@ -51,14 +51,21 @@ const DISCOUNT_RATE = 0.1;
 const pricingUnitAbbrev = (unit: string) =>
   unit === "week" ? "wk" : unit === "semester" ? "sem" : unit === "month" ? "mth" : unit;
 
-// Number of `pricingUnit`s covered by [start, end] — e.g. 3 days, 2 weeks.
-const computeUnits = (start: string, end: string, unit: string): number => {
+// Raw day count between two date strings, floored at 1.
+const computeDays = (start: string, end: string): number => {
   if (!start || !end) return 1;
   const startDate = new Date(start);
   const endDate = new Date(end);
   if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return 1;
 
-  const days = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000));
+  return Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000));
+};
+
+// Number of `pricingUnit`s covered by [start, end] — e.g. 3 days, 2 weeks.
+// Only used for week/month/semester pricing; day-priced assets use the
+// degressive `dailyRateMultiplier` below instead of a flat day count.
+const computeUnits = (start: string, end: string, unit: string): number => {
+  const days = computeDays(start, end);
 
   switch (unit) {
     case "week":
@@ -70,6 +77,37 @@ const computeUnits = (start: string, end: string, unit: string): number => {
     default:
       return days;
   }
+};
+
+// Degressive daily-rate pricing, expressed as % of one day's rate per day of
+// the booking: day 1 at 100%, day 2 at 70%, day 3 at 50%, days 4-7 at ~35%
+// each, days 8+ at ~20% each. The last two tiers were given as ranges
+// (30-40%, 15-25%) — using the midpoint of each. Anything past day 30
+// continues at the day-30 rate rather than dropping off a cliff.
+const DAILY_RATE_TIERS: { throughDay: number; percentOfDailyRate: number }[] = [
+  { throughDay: 1, percentOfDailyRate: 1.0 },
+  { throughDay: 2, percentOfDailyRate: 0.7 },
+  { throughDay: 3, percentOfDailyRate: 0.5 },
+  { throughDay: 7, percentOfDailyRate: 0.35 },
+  { throughDay: Infinity, percentOfDailyRate: 0.2 },
+];
+
+const dailyRateMultiplier = (days: number): number => {
+  if (days <= 0) return 0;
+
+  let multiplier = 0;
+  let remainingDays = days;
+  let coveredThroughDay = 0;
+
+  for (const tier of DAILY_RATE_TIERS) {
+    if (remainingDays <= 0) break;
+    const daysInTier = Math.min(remainingDays, tier.throughDay - coveredThroughDay);
+    multiplier += daysInTier * tier.percentOfDailyRate;
+    remainingDays -= daysInTier;
+    coveredThroughDay = tier.throughDay;
+  }
+
+  return multiplier;
 };
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -105,21 +143,26 @@ function CheckoutPageInner() {
 
   const hasOrder = Boolean(assetId);
 
-  const units = useMemo(() => computeUnits(startDate, endDate, pricingUnit), [startDate, endDate, pricingUnit]);
-  const lineTotal = rate * quantity * units;
+  const days = useMemo(() => computeDays(startDate, endDate), [startDate, endDate]);
 
-  // Always expressed in days, regardless of the asset's own pricingUnit
-  // (which "units" above is denominated in) — this is just "how long is the
-  // renter booking it for", shown back to them next to Start/End Date.
+  // Day-priced assets use the degressive tiered rate; week/month/semester
+  // pricing still uses a flat units × rate, since no tiering was specified
+  // for those.
+  const lineTotal = useMemo(() => {
+    if (pricingUnit === "day") {
+      return rate * quantity * dailyRateMultiplier(days);
+    }
+    const units = computeUnits(startDate, endDate, pricingUnit);
+    return rate * quantity * units;
+  }, [rate, quantity, pricingUnit, days, startDate, endDate]);
+
+  // Always expressed in days, regardless of the asset's own pricingUnit —
+  // this is just "how long is the renter booking it for", shown back to
+  // them next to Start/End Date.
   const durationLabel = useMemo(() => {
     if (!startDate || !endDate) return '';
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return '';
-
-    const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000));
     return `${days} ${days === 1 ? 'day' : 'days'}`;
-  }, [startDate, endDate]);
+  }, [startDate, endDate, days]);
 
   const orderItems = hasOrder
     ? [
