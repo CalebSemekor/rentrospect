@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import BookingInputField from "@/components/BookingInputField";
 import { RentalAssetCard } from "@/components/RentalAssetCard";
 import { DiscountCodeInput } from "@/components/DiscountCodeInput";
@@ -9,19 +10,6 @@ import LoadingDialog from "./loading";
 import PaymentSuccessDialog from "@/components/PaymentSuccessDialog";
 
 // ── Example SVG icons ────────────────────────────────────────────────────────
-
-const EmailIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg viewBox="0 0 20 20" fill="currentColor" {...props}>
-    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-  </svg>
-);
-
-const PhoneIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg viewBox="0 0 20 20" fill="currentColor" {...props}>
-    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
-  </svg>
-);
 
 const TagIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   <svg viewBox="0 0 20 20" fill="currentColor" {...props}>
@@ -33,35 +21,76 @@ const TagIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-// ── Mock data ────────────────────────────────────────────────────────────────
+const DurationIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+  <svg viewBox="0 0 20 20" fill="currentColor" {...props}>
+    <path
+      fillRule="evenodd"
+      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
+// ── Payment methods (not yet backed by a real "saved cards" endpoint) ───────
 
 const PAYMENT_METHODS: { id: string; maskedNumber: string; methodType: PaymentMethodType }[] = [
   { id: "visa-8304", maskedNumber: "8304", methodType: "card" },
   { id: "momo-8304", maskedNumber: "8304", methodType: "momo" },
 ];
 
-const ORDER_ITEMS = [
-  { id: "1", src: "/images/assets/speaker.png", title: "M&K Sound S300 Speaker S...", price: "€180.00", quantity: 1, rate: "GH¢90/day" },
-  { id: "2", src: "/images/chair.jpg", title: "Mesa de jantar Garbo – Hou...", price: "€200.00", quantity: 3, rate: "GH¢100/day" },
-];
+// Two separate platform-side fees, both a % of the subtotal: Aza's own
+// payment-processing cut (see `payments.aza_session_id` in the schema) and
+// Rentrospect's own service fee. NOTE: this no longer matches the single
+// "~4% Renter Service Fee" line item quoted in the Payment Terms page
+// (Section 3.2) — that copy should be updated to reflect the 1.5% + 1% split
+// once it's final.
+const AZA_FEE_RATE = 0.015;
+const RENTROSPECT_FEE_RATE = 0.01;
+const DISCOUNT_RATE = 0.1;
 
-const SUMMARY_ROWS = [
-  ["Subtotal", "€380.00"],
-  ["Platform Service Fee", "€5.00"],
-  ["Security Deposit", "€100.00"],
-  ["Delivery Fee", "€0.00"],
-  ["Discount (10%)", "-€48.50"],
-];
+const pricingUnitAbbrev = (unit: string) =>
+  unit === "week" ? "wk" : unit === "semester" ? "sem" : unit === "month" ? "mth" : unit;
+
+// Number of `pricingUnit`s covered by [start, end] — e.g. 3 days, 2 weeks.
+const computeUnits = (start: string, end: string, unit: string): number => {
+  if (!start || !end) return 1;
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return 1;
+
+  const days = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000));
+
+  switch (unit) {
+    case "week":
+      return Math.max(1, Math.ceil(days / 7));
+    case "month":
+      return Math.max(1, Math.ceil(days / 30));
+    case "semester":
+      return 1;
+    default:
+      return days;
+  }
+};
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export default function CheckoutPage() {
-  const [email, setEmail] = useState('');
-  const [endDate, setEndDate] = useState(Date);
-  const [duration, setDuration] = useState('');
+function CheckoutPageInner() {
+  const searchParams = useSearchParams();
+
+  // Everything the asset details page hands over via the URL when the renter
+  // taps "Place order" there.
+  const assetId = searchParams.get("assetId") ?? "";
+  const name = searchParams.get("name") ?? "";
+  const image = searchParams.get("image") ?? "/images/Avatar.png";
+  const rate = Number(searchParams.get("rate") ?? 0);
+  const pricingUnit = searchParams.get("pricingUnit") ?? "day";
+  const quantity = Number(searchParams.get("quantity") ?? 1);
+  const paramStartDate = searchParams.get("startDate") ?? "";
+  const paramEndDate = searchParams.get("endDate") ?? "";
+
   const [isPaying, setIsPaying] = useState(false);
-  const [startDate, setStartDate] = useState(Date);
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [startDate, setStartDate] = useState(paramStartDate);
+  const [endDate, setEndDate] = useState(paramEndDate);
   const [paymentResult, setPaymentResult] = useState<null | {
     amount: string;
     refNumber: string;
@@ -74,18 +103,62 @@ export default function CheckoutPage() {
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
   const [selectedPaymentId, setSelectedPaymentId] = useState("visa-8304");
 
+  const hasOrder = Boolean(assetId);
+
+  const units = useMemo(() => computeUnits(startDate, endDate, pricingUnit), [startDate, endDate, pricingUnit]);
+  const lineTotal = rate * quantity * units;
+
+  // Always expressed in days, regardless of the asset's own pricingUnit
+  // (which "units" above is denominated in) — this is just "how long is the
+  // renter booking it for", shown back to them next to Start/End Date.
+  const durationLabel = useMemo(() => {
+    if (!startDate || !endDate) return '';
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return '';
+
+    const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000));
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  }, [startDate, endDate]);
+
+  const orderItems = hasOrder
+    ? [
+        {
+          id: assetId,
+          src: image,
+          title: name,
+          price: `₵${lineTotal.toFixed(2)}`,
+          quantity,
+          rate: `₵${rate}/${pricingUnitAbbrev(pricingUnit)}`,
+        },
+      ]
+    : [];
+
+  const subtotal = lineTotal;
+  const azaFee = subtotal * AZA_FEE_RATE;
+  const rentrospectFee = subtotal * RENTROSPECT_FEE_RATE;
+  const discountAmount = appliedCode ? subtotal * DISCOUNT_RATE : 0;
+  const total = Math.max(0, subtotal + azaFee + rentrospectFee - discountAmount);
+
+  const summaryRows: [string, string][] = [
+    ["Subtotal", `₵${subtotal.toFixed(2)}`],
+    ["Aza Fee (1.5%)", `₵${azaFee.toFixed(2)}`],
+    ["Rentrospect Fee (1%)", `₵${rentrospectFee.toFixed(2)}`],
+    ...(appliedCode ? ([["Discount (10%)", `-₵${discountAmount.toFixed(2)}`]] as [string, string][]) : []),
+  ];
+
   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
   const processPayment = async () => {
     await delay(4000);
 
     return {
-      amount: "GHC 87.98",
+      amount: `₵${total.toFixed(2)}`,
       refNumber: "930345",
       paymentTime: "12:03AM",
       paymentMethod: "MOMO",
       senderName: "Priscilla",
-      totalAmount: "GHC 436.50",
+      totalAmount: `₵${total.toFixed(2)}`,
     };
   };
 
@@ -120,9 +193,15 @@ export default function CheckoutPage() {
         <div className="w-full md:w-1/2 bg-greenBookingBg px-5 md:px-29 md:py-10">
           <h2 className="mb-6 text-[24px] font-semibold text-white montserrat-font">Your Order</h2>
 
-          {ORDER_ITEMS.map((item) => (
-            <RentalAssetCard key={item.id} {...item} />
-          ))}
+          {hasOrder ? (
+            orderItems.map((item) => (
+              <RentalAssetCard key={item.id} {...item} />
+            ))
+          ) : (
+            <p className="dmSans-font text-sm text-gray-400">
+              No item selected — head back to a listing and tap &quot;Place order&quot;.
+            </p>
+          )}
 
           <DiscountCodeInput
             label="Discount Code"
@@ -141,7 +220,7 @@ export default function CheckoutPage() {
           <hr className="my-1 border-t border-white/8" />
 
           <div className="mt-7 flex flex-col gap-2.5 text-sm mb-3">
-            {SUMMARY_ROWS.map(([k, v]) => (
+            {summaryRows.map(([k, v]) => (
               <div key={k} className="flex justify-between">
                 <span className="text-gray-400 dmSans-font">{k}</span>
                 <span className="text-gray-200 dmSans-font">{v}</span>
@@ -150,7 +229,7 @@ export default function CheckoutPage() {
             <hr className="my-1 border-t border-white/8" />
             <div className="flex justify-between text-base font-semibold text-white dmSans-font">
               <span>Total</span>
-              <span>€436.50</span>
+              <span>₵{total.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -158,24 +237,6 @@ export default function CheckoutPage() {
         {/* Right light panel */}
         <div className="flex flex-1 px-12 py-10 bg-white justify-center items-center">
           <div className="flex w-full max-w-120 flex-col gap-9">
-
-            <BookingInputField
-              type='text'
-              label="Email"
-              value={email}
-              SvgIcon={EmailIcon}
-              onChange={setEmail}
-              placeholder='someone@example.com'
-            />
-            <BookingInputField
-              type='text'
-              placeholder='+233-559-892-202'
-              label='Phone Number'
-              value={phoneNumber}
-              SvgIcon={PhoneIcon}
-              onChange={setPhoneNumber}
-            />
-            {/* Payment methods */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-700 dmSans-font">Payment method</span>
@@ -198,25 +259,25 @@ export default function CheckoutPage() {
             </div>
 
             <BookingInputField
-              type='date'
+              type='text'
               label="Duration"
-              value={duration}
-              SvgIcon={EmailIcon}
-              onChange={setDuration}
+              value={durationLabel}
+              SvgIcon={DurationIcon}
+              onChange={() => {}}
+              placeholder='Pick start & end dates'
+              readOnly
             />
             <div className='flex gap-3'>
               <BookingInputField
                 type='date'
                 label="Start Date"
                 value={startDate}
-                SvgIcon={EmailIcon}
                 onChange={setStartDate}
               />
               <BookingInputField
                 type='date'
-                label='End Date'
                 value={endDate}
-                SvgIcon={PhoneIcon}
+                label='End Date'
                 onChange={setEndDate}
               />
 
@@ -226,13 +287,22 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={handlePay}
-              className='mt-2 h-12 w-full rounded-2xl bg-gray-900 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dmSans-font cursor-pointer'
+              disabled={!hasOrder}
+              className='mt-2 h-12 w-full rounded-2xl bg-gray-900 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dmSans-font cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
             >
-              Pay €436.50
+              Pay ₵{total.toFixed(2)}
             </button>
           </div>
         </div>
       </main>
     </>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={null}>
+      <CheckoutPageInner />
+    </Suspense>
   );
 }

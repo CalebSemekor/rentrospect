@@ -19,6 +19,10 @@ export interface BottomSheetProps extends RentalTileProps {
     pricingUnit?: string
     description?: string
     max?: number
+    startDate?: string
+    endDate?: string
+    onStartDateChange?: (value: string) => void
+    onEndDateChange?: (value: string) => void
     onQuantityChange?: (quantity: number) => void
     onPlaceOrder?: () => void
 }
@@ -36,13 +40,15 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     description,
     pricingUnit,
     quantity = 1,
+    startDate = '',
+    endDate = '',
+    onStartDateChange,
+    onEndDateChange,
     onPlaceOrder,
     placed = false,
     onQuantityChange,
     isPending = false,
 }) => {
-    const endDate = ''
-    const startDate = ''
     return (
         <div className="relative flex md:hidden flex-col bg-[#F3F4F6] rounded-t-[40px] pt-8 pb-6">
 
@@ -75,7 +81,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
                             <p className='text-[.75rem] text-[#787676] leading-[14.4px] dmSans-font'>{rating} <span className='text-[#347EFB]'>({reviews} reviews)</span></p>
                         </div>
                     </div>
-                    <QuantityStepper max={max} />
+                    <QuantityStepper max={max} initialValue={quantity} onChange={onQuantityChange} />
                 </div>
                 <div className='flex flex-col gap-0.5 px-6'>
                     <p className='text-[#878787] dmSans-font text-[12px] leading-4.5'>{description}</p>
@@ -141,23 +147,14 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
                 <div className='flex flex-col bg-white mt-4 px-6'>
                     <h4 className='mt-8.25 montserrat-font text-[1rem] font-bold mb-6.25'>Duration</h4>
                     <div className='flex gap-4 items-center justify-around pb-3'>
-                        <DateSelect value={startDate} />
+                        <DateSelect value={startDate} onChange={onStartDateChange} />
 
-                        <DateSelect value={endDate} />
+                        <DateSelect value={endDate} onChange={onEndDateChange} />
                     </div>
                 </div>
                 <div className='flex flex-col gap-4 mt-4'>
                     <Accordion title='asset tags'>
 
-                    </Accordion>
-                    <Accordion title='asset quantity'>
-                        <div className='px-6 py-3'>
-                            <QuantityStepper
-                                initialValue={quantity}
-                                min={1}
-                                onChange={onQuantityChange}
-                            />
-                        </div>
                     </Accordion>
                     <Accordion title='asset condition'>
 
