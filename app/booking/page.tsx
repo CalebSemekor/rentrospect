@@ -1,13 +1,14 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import LoadingDialog from "./loading";
 import { useSearchParams } from "next/navigation";
+import { Suspense, useMemo, useState } from "react";
 import BookingInputField from "@/components/BookingInputField";
 import { RentalAssetCard } from "@/components/RentalAssetCard";
+import { computeDays, computeLineTotal } from "@/utils/pricing";
 import { DiscountCodeInput } from "@/components/DiscountCodeInput";
-import { PaymentMethodTile, PaymentMethodType } from "@/components/PaymentMethodTile";
-import LoadingDialog from "./loading";
 import PaymentSuccessDialog from "@/components/PaymentSuccessDialog";
+import { PaymentMethodTile, PaymentMethodType } from "@/components/PaymentMethodTile";
 
 // ── Example SVG icons ────────────────────────────────────────────────────────
 
@@ -51,83 +52,6 @@ const DISCOUNT_RATE = 0.1;
 const pricingUnitAbbrev = (unit: string) =>
   unit === "week" ? "wk" : unit === "semester" ? "sem" : unit === "month" ? "mth" : unit;
 
-// Raw day count between two date strings, floored at 1.
-const computeDays = (start: string, end: string): number => {
-  if (!start || !end) return 1;
-  const startDate = new Date(start);
-  const endDate = new Date(end);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return 1;
-
-  return Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86400000));
-};
-
-// Number of `pricingUnit`s covered by [start, end] — e.g. 3 days, 2 weeks.
-// Only used for week/month/semester pricing; day-priced assets use the
-// degressive `dailyRateMultiplier` below instead of a flat day count.
-const computeUnits = (start: string, end: string, unit: string): number => {
-  const days = computeDays(start, end);
-
-  switch (unit) {
-    case "week":
-      return Math.max(1, Math.ceil(days / 7));
-    case "month":
-      return Math.max(1, Math.ceil(days / 30));
-    case "semester":
-      return 1;
-    default:
-      return days;
-  }
-};
-
-// Degressive daily-rate pricing, expressed as % of one day's rate per day of
-// the booking: day 1 at 100%, day 2 at 70%, day 3 at 50%, days 4-7 at ~35%
-// each, days 8+ at ~20% each. The last two tiers were given as ranges
-// (30-40%, 15-25%) — using the midpoint of each. Anything past day 30
-// continues at the day-30 rate rather than dropping off a cliff.
-const DAILY_RATE_TIERS: { throughDay: number; percentOfDailyRate: number }[] = [
-  { throughDay: 1, percentOfDailyRate: 1.0 },
-  { throughDay: 2, percentOfDailyRate: 0.7 },
-  { throughDay: 3, percentOfDailyRate: 0.5 },
-  { throughDay: 7, percentOfDailyRate: 0.35 },
-  { throughDay: Infinity, percentOfDailyRate: 0.2 },
-];
-
-const dailyRateMultiplier = (days: number): number => {
-  if (days <= 0) return 0;
-
-  let multiplier = 0;
-  let remainingDays = days;
-  let coveredThroughDay = 0;
-
-  for (const tier of DAILY_RATE_TIERS) {
-    if (remainingDays <= 0) break;
-    const daysInTier = Math.min(remainingDays, tier.throughDay - coveredThroughDay);
-    multiplier += daysInTier * tier.percentOfDailyRate;
-    remainingDays -= daysInTier;
-    coveredThroughDay = tier.throughDay;
-  }
-
-  return multiplier;
-};
-
-// Bulk-quantity discount: unlike the daily tiers above, this isn't
-// cumulative — the whole order gets whichever bracket its quantity falls
-// into, applied as a % of the per-unit rate. ("20+" in the source table
-// reads as "21+" here so the 11-20 bracket isn't double-covered.)
-const QUANTITY_RATE_TIERS: { minQty: number; maxQty: number; percentOfRate: number }[] = [
-  { minQty: 1, maxQty: 1, percentOfRate: 1.0 },
-  { minQty: 2, maxQty: 2, percentOfRate: 0.95 },
-  { minQty: 3, maxQty: 5, percentOfRate: 0.9 },
-  { minQty: 6, maxQty: 10, percentOfRate: 0.8 },
-  { minQty: 11, maxQty: 20, percentOfRate: 0.7 },
-  { minQty: 21, maxQty: Infinity, percentOfRate: 0.6 },
-];
-
-const quantityRateMultiplier = (quantity: number): number => {
-  const tier = QUANTITY_RATE_TIERS.find((t) => quantity >= t.minQty && quantity <= t.maxQty);
-  return tier ? tier.percentOfRate : 1.0;
-};
-
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 function CheckoutPageInner() {
@@ -141,6 +65,7 @@ function CheckoutPageInner() {
   const rate = Number(searchParams.get("rate") ?? 0);
   const pricingUnit = searchParams.get("pricingUnit") ?? "day";
   const quantity = Number(searchParams.get("quantity") ?? 1);
+  const securityDeposit = Number(searchParams.get("securityDeposit") ?? 0);
   const paramStartDate = searchParams.get("startDate") ?? "";
   const paramEndDate = searchParams.get("endDate") ?? "";
 
@@ -165,15 +90,13 @@ function CheckoutPageInner() {
 
   // Day-priced assets use the degressive tiered rate; week/month/semester
   // pricing still uses a flat units × rate, since no tiering was specified
-  // for those. The bulk-quantity discount applies on top of either.
-  const lineTotal = useMemo(() => {
-    const effectiveRate = rate * quantityRateMultiplier(quantity);
-    if (pricingUnit === "day") {
-      return effectiveRate * quantity * dailyRateMultiplier(days);
-    }
-    const units = computeUnits(startDate, endDate, pricingUnit);
-    return effectiveRate * quantity * units;
-  }, [rate, quantity, pricingUnit, days, startDate, endDate]);
+  // for those. The bulk-quantity discount applies on top of either — see
+  // utils/pricing.ts, shared with the asset details page so both agree on
+  // the same total.
+  const lineTotal = useMemo(
+    () => computeLineTotal(rate, quantity, pricingUnit, startDate, endDate),
+    [rate, quantity, pricingUnit, startDate, endDate]
+  );
 
   // Always expressed in days, regardless of the asset's own pricingUnit —
   // this is just "how long is the renter booking it for", shown back to
@@ -200,13 +123,16 @@ function CheckoutPageInner() {
   const azaFee = subtotal * AZA_FEE_RATE;
   const rentrospectFee = subtotal * RENTROSPECT_FEE_RATE;
   const discountAmount = appliedCode ? subtotal * DISCOUNT_RATE : 0;
-  const total = Math.max(0, subtotal + azaFee + rentrospectFee - discountAmount);
+  // Held alongside the rental cost, not a % fee, so it isn't part of what
+  // the Aza/Rentrospect fees or the discount are computed against.
+  const total = Math.max(0, subtotal + azaFee + rentrospectFee - discountAmount + securityDeposit);
 
   const summaryRows: [string, string][] = [
     ["Subtotal", `₵${subtotal.toFixed(2)}`],
     ["Aza Fee (1.5%)", `₵${azaFee.toFixed(2)}`],
     ["Rentrospect Fee (1%)", `₵${rentrospectFee.toFixed(2)}`],
     ...(appliedCode ? ([["Discount (10%)", `-₵${discountAmount.toFixed(2)}`]] as [string, string][]) : []),
+    ...(securityDeposit > 0 ? ([["Security Deposit", `₵${securityDeposit.toFixed(2)}`]] as [string, string][]) : []),
   ];
 
   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));

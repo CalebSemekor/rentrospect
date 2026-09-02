@@ -11,7 +11,9 @@ export interface AssetDraft {
     tags: string;
     category: string; // CategoryId, as the <select> string value
     description: string;
+    returnPolicy: string;
     rate: string;
+    securityDeposit: string;
     pricingUnit: string;
     location: string;
     condition: string;

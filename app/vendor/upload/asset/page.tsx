@@ -16,6 +16,7 @@ const VendorUploadForm = () => {
     const [asset, setAsset] = useState("");
     const [assetTags, setAssetTags] = useState("");
     const [dailyRate, setDailyRate] = useState("0.00")
+    const [securityDeposit, setSecurityDeposit] = useState("50.00")
     const [submitting, setSubmitting] = useState(false)
     const [assetCategory, setAssetCategory] = useState("");
     const [assetQuantity, setAssetQuantity] = useState("1");
@@ -23,6 +24,7 @@ const VendorUploadForm = () => {
     const [pickupLocation, setPickupLocation] = useState("");
     const [assetImages, setAssetImages] = useState<File[]>([])
     const [assetDescription, setAssetDescription] = useState("")
+    const [returnPolicy, setReturnPolicy] = useState("")
     const [existingImageUrls, setExistingImageUrls] = useState<string[]>([])
     const [editingAssetId, setEditingAssetId] = useState<string | null>(null)
     const [availability, setAvailability] = useState<'available' | 'paused'>('paused')
@@ -46,11 +48,13 @@ const VendorUploadForm = () => {
         setAsset(draft.name)
         setAssetTags(draft.tags)
         setDailyRate(draft.rate)
+        setSecurityDeposit(draft.securityDeposit)
         setAssetCategory(draft.category)
         setAssetQuantity(draft.quantity)
         setAssetCondition(draft.condition)
         setPickupLocation(draft.location)
         setAssetDescription(draft.description)
+        setReturnPolicy(draft.returnPolicy)
         setExistingImageUrls(draft.imagePreviewUrls)
         setAvailability(draft.availability)
     }, [searchParams])
@@ -74,7 +78,10 @@ const VendorUploadForm = () => {
                 name: asset,
                 availability: 'available',
                 description: assetDescription,
+                returnPolicy,
                 rate: Number(dailyRate),
+                securityDeposit: Number(securityDeposit),
+                tags: assetTags,
                 pricingUnit: "day",
                 location: pickupLocation,
                 condition: assetCondition,
@@ -99,7 +106,9 @@ const VendorUploadForm = () => {
                 tags: assetTags,
                 category: assetCategory,
                 description: assetDescription,
+                returnPolicy,
                 rate: dailyRate,
+                securityDeposit,
                 pricingUnit: assetDetails.pricingUnit,
                 location: pickupLocation,
                 condition: assetCondition,
@@ -121,7 +130,7 @@ const VendorUploadForm = () => {
 
     return (
         <main className='flex flex-col md:flex-row gap-18.75 px-6 md:px-13.75 pb-6.5'>
-            <div className='hidden md:flex flex-col flex-1 gap-2'>
+            <div className='hidden md:flex flex-col flex-1 gap-2 md:sticky md:top-6 md:self-start'>
                 {existingImageUrls.length > 0 && (
                     <>
                         <p className="text-sm font-semibold leading-5 tracking-[-0.0088rem] dmSans-font">Current Images</p>
@@ -167,6 +176,7 @@ const VendorUploadForm = () => {
                     label='Asset Tags'
                     value={assetTags}
                     onChange={setAssetTags}
+                    placeholder='#speaker #JBL'
                 />
                 <VendorInputField
                     label='Asset Quantity'
@@ -184,6 +194,12 @@ const VendorUploadForm = () => {
                     value={dailyRate}
                     onChange={setDailyRate}
                 />
+                <VendorInputField
+                    type='number'
+                    label='Security Deposit (GH₵)'
+                    value={securityDeposit}
+                    onChange={setSecurityDeposit}
+                />
                 <VendorSelectField
                     label='Asset Condition'
                     options={conditions}
@@ -194,6 +210,11 @@ const VendorUploadForm = () => {
                     label='Asset Description'
                     value={assetDescription}
                     onChange={setAssetDescription}
+                />
+                <VendorTextAreaField
+                    label='Return Policy'
+                    value={returnPolicy}
+                    onChange={setReturnPolicy}
                 />
                 <div className='flex gap-5 items-center justify-end sticky'>
                     <button className='cursor-pointer w-51 py-4 px-5 dmSans-font text-[1rem] font-semibold leading-6 text-loginTextClr bg-[#F2F4F8] hover:bg-[#E6EBF2] rounded-2xl'>Cancel</button>

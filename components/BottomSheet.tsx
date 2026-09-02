@@ -19,6 +19,7 @@ export interface BottomSheetProps extends RentalTileProps {
     pricingUnit?: string
     description?: string
     max?: number
+    total?: number
     startDate?: string
     endDate?: string
     onStartDateChange?: (value: string) => void
@@ -31,6 +32,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
     max,
     name,
     price,
+    total,
     about,
     owner,
     rating,
@@ -63,9 +65,18 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
 
             {/* Content */}
             <div className="relative z-10 flex flex-col gap-4">
-                <div className='flex px-6 justify-between'>
+                <div className='flex px-6 justify-between items-start'>
                     <span className="bg-black text-white text-xs font-bold px-3 py-1 rounded">{category}</span>
-                    <p className='text-[#0E0E10] dmSans-font text-[1.25rem] font-semibold leading-7.5'>₵{price}/{pricingUnit}</p>
+                    <div className='flex flex-col items-end gap-0.5'>
+                        {startDate && endDate && total !== undefined ? (
+                            <>
+                                <p className='text-[#0E0E10] dmSans-font text-[1.25rem] font-semibold leading-7.5'>₵{total.toFixed(2)}</p>
+                                <p className='text-[#787676] dmSans-font text-[.75rem]'>at ₵{price}/{pricingUnit}</p>
+                            </>
+                        ) : (
+                            <p className='text-[#0E0E10] dmSans-font text-[1.25rem] font-semibold leading-7.5'>₵{price}/{pricingUnit}</p>
+                        )}
+                    </div>
                 </div>
                 <p className='px-6 leading-32.5 dmSans-font text-2xl font-semibold text-[#121111]'>{name}</p>
 

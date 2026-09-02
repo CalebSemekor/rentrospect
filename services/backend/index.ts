@@ -5,6 +5,14 @@ import { BASE_URL, type ApiResponse } from './base';
 export * from './vendor';
 export * from './client';
 
+// Matches the Go handler's response, except `rate` and `securityDeposit`:
+// Go's decimal.Decimal marshals as a quoted JSON string, not a number (same
+// gotcha as RentalTileResponse.price in client.ts) — parsed to numbers below.
+interface LoneAssetResponse extends Omit<LoneAsset, 'rate' | 'securityDeposit'> {
+  rate: string;
+  securityDeposit: string;
+}
+
 // Single Asset Detail — public endpoint (no auth token), used by both the
 // renter-facing asset page and the vendor's own listing preview. `images`
 // carries an `isPrimary` flag per image — the primary one is the hero image.
@@ -18,7 +26,13 @@ export async function getAssetById(id: string): Promise<LoneAsset | null> {
       throw new Error('Failed to fetch asset details');
     }
 
-    return await response.json();
+    const data: LoneAssetResponse = await response.json();
+
+    return {
+      ...data,
+      rate: Number(data.rate),
+      securityDeposit: Number(data.securityDeposit),
+    };
   } catch (error) {
     console.error(error);
     return null;

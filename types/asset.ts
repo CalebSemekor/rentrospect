@@ -17,6 +17,7 @@ interface AssetImagesRes {
 
 export interface LoneAsset {
     rate: number
+    tags: string
     vendor: string
     location: string
     category: string
@@ -27,6 +28,8 @@ export interface LoneAsset {
     pricingUnit: string
     description: string
     aboutVendor: string
+    returnPolicy: string
+    securityDeposit: number
     images: AssetImagesRes[]
 }
 

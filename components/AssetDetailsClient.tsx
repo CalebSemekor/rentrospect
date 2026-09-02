@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { LoneAsset } from '@/types/asset'
 import StatTile from '@/components/StatTile'
@@ -9,6 +9,7 @@ import Accordion from '@/components/Accordion'
 import BottomSheet from '@/components/BottomSheet'
 import DateSelect from '@/components/DateSelectTile'
 import QuantityStepper from '@/components/QuantityStepper'
+import { computeDays, computeLineTotal } from '@/utils/pricing'
 
 interface AssetDetailsClientProps {
     id: string
@@ -26,6 +27,15 @@ const AssetDetailsClient: React.FC<AssetDetailsClientProps> = ({ id, assetProps 
 
     const canPlaceOrder = Boolean(startDate && endDate && quantity > 0)
 
+    const days = useMemo(() => computeDays(startDate, endDate), [startDate, endDate])
+
+    // Same degressive daily-rate + bulk-quantity math the booking page uses,
+    // so the price shown here already matches what checkout will charge.
+    const lineTotal = useMemo(
+        () => computeLineTotal(assetProps.rate, quantity, assetProps.pricingUnit, startDate, endDate),
+        [assetProps.rate, assetProps.pricingUnit, quantity, startDate, endDate]
+    )
+
     const handlePlaceOrder = () => {
         if (!canPlaceOrder) return
 
@@ -40,6 +50,7 @@ const AssetDetailsClient: React.FC<AssetDetailsClientProps> = ({ id, assetProps 
             endDate,
             category: assetProps.category,
             vendor: assetProps.vendor,
+            securityDeposit: String(assetProps.securityDeposit),
         })
 
         router.push(`/booking?${params.toString()}`)
@@ -86,9 +97,22 @@ const AssetDetailsClient: React.FC<AssetDetailsClientProps> = ({ id, assetProps 
                         <p className='capitalize plusJakartaSans-font text-[20px] leading-7.5 tracking-[-0.4px] font-semibold text-[#596780]'>{assetProps.condition.replace('_', ' ')}</p>
                         <p className='plusJakartaSans-font text-[20px] leading-7.5 tracking-[-0.4px] text-[#90A3BF]'>Location:</p>
                         <p className='plusJakartaSans-font text-[20px] leading-7.5 tracking-[-0.4px] font-semibold text-[#596780]'>{assetProps.location}</p>
+                        <p className='plusJakartaSans-font text-[20px] leading-7.5 tracking-[-0.4px] text-[#90A3BF]'>Quantity:</p>
+                        <p className='plusJakartaSans-font text-[20px] leading-7.5 tracking-[-0.4px] font-semibold text-[#596780]'>{assetProps.quantity}</p>
                     </div>
                     <div className='flex justify-between'>
-                        <p className='text-[28px] font-bold dmSans-font text-[#1A202C]'>₵{assetProps.rate}/<span className='text-[16px] text-gray-600'>{assetProps.pricingUnit}</span></p>
+                        <div className='flex flex-col gap-1'>
+                            {startDate && endDate ? (
+                                <>
+                                    <p className='text-[28px] font-bold dmSans-font text-[#1A202C]'>₵{lineTotal.toFixed(2)}</p>
+                                    <p className='dmSans-font text-[14px] text-[#596780]'>
+                                        {quantity} × {days} {days === 1 ? 'day' : 'days'} at ₵{assetProps.rate}/{assetProps.pricingUnit}
+                                    </p>
+                                </>
+                            ) : (
+                                <p className='text-[28px] font-bold dmSans-font text-[#1A202C]'>₵{assetProps.rate}/<span className='text-[16px] text-gray-600'>{assetProps.pricingUnit}</span></p>
+                            )}
+                        </div>
                         <QuantityStepper max={assetProps.quantity} initialValue={quantity} onChange={setQuantity} />
                     </div>
                 </div>
@@ -154,16 +178,25 @@ const AssetDetailsClient: React.FC<AssetDetailsClientProps> = ({ id, assetProps 
                 </div>
                 <div className='flex flex-col gap-4 mt-4'>
                     <Accordion title='asset tags'>
-
+                        <div className='flex flex-wrap gap-2'>
+                            {assetProps.tags.split(/\s+/).filter(Boolean).map((tag, index) => (
+                                <span
+                                    key={index}
+                                    className='capitalize px-4 py-0.5 inter-font text-[#5C5F6A] border border-[#E6E7E8] rounded-[100px] text-[12px] font-medium leading-6'
+                                >
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
                     </Accordion>
                     <Accordion title='asset quantity'>
-
+                        <p className='text-otherSmallText inter-font text-[16px] leading-6.5'>{assetProps.quantity}</p>
                     </Accordion>
                     <Accordion title='asset condition'>
-
+                        <p className='text-otherSmallText inter-font text-[16px] leading-6.5 capitalize'>{assetProps.condition.replace('_', ' ')}</p>
                     </Accordion>
                     <Accordion title='return policies'>
-
+                        <p className='text-otherSmallText inter-font text-[16px] leading-6.5'>{assetProps.returnPolicy}</p>
                     </Accordion>
                     <Accordion title='reviews'>
 
@@ -180,6 +213,7 @@ const AssetDetailsClient: React.FC<AssetDetailsClientProps> = ({ id, assetProps 
             </div>
             <BottomSheet
                 price={assetProps.rate}
+                total={lineTotal}
                 owner={assetProps.vendor}
                 // TODO: Rating
                 rating={4.2}
