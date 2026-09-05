@@ -99,3 +99,10 @@ export const computeLineTotal = (
     const units = computeUnits(startDate, endDate, pricingUnit);
     return effectiveRate * quantity * units;
 };
+
+// Security deposit for the order: the same bulk-quantity tapering as the
+// rental rate above, so it doesn't just multiply linearly with quantity —
+// e.g. renting 6 of something at the 80%-per-unit bracket holds a deposit
+// of 6 × 0.8 × the per-unit deposit, not 6× it outright.
+export const computeSecurityDeposit = (baseDeposit: number, quantity: number): number =>
+    baseDeposit * quantity * quantityRateMultiplier(quantity);

@@ -1,4 +1,4 @@
-import { BASE_URL } from './base';
+import { BASE_URL, type ApiResponse } from './base';
 import type { RentalTileProps } from '@/components/RentalTile';
 import type { NotificationSettings } from '@/types/notifications';
 import type { AccountDetails, SecuritySettings } from '@/types/account';
@@ -196,4 +196,48 @@ export async function getClientRentals(token: string): Promise<RentalTileProps[]
     console.error(error);
     return [];
   }
+}
+
+// --- Payment (/client/makeEscrowDeposit) ------------------------------------
+// Kicks off an Aza-hosted checkout session for a booking. Rentrospect holds
+// the funds in escrow until the renter accepts the finished rental (see the
+// PaymentSuccessDialog footer copy) — the renter is redirected to
+// `checkoutUrl` to actually pay, then `client/verifyPayment/{id}` confirms it
+// went through.
+
+export interface EscrowDepositRequest {
+  amount: number;
+  userId: string;
+  assetId: string;
+  startDate: string; // ISO 8601
+  endDate: string; // ISO 8601
+  consultationMode: number;
+  securityDeposit: number; // already tiered by quantity — see computeSecurityDeposit
+}
+
+export interface EscrowDepositResponse {
+  id: string;
+  name: string;
+  amount: string; // decimal.Decimal — quoted string, same gotcha as elsewhere
+  status: number;
+  currency: string;
+  reference: string;
+  expiresAt: string;
+  createdAt: string;
+  checkoutUrl: string;
+}
+
+export async function makeEscrowDeposit(
+  token: string,
+  payload: EscrowDepositRequest
+): Promise<ApiResponse<EscrowDepositResponse>> {
+  const response = await fetch(`${BASE_URL}payment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  return response.json();
 }

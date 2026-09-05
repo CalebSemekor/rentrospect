@@ -1,14 +1,16 @@
 "use client";
 
 import LoadingDialog from "./loading";
+import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 import BookingInputField from "@/components/BookingInputField";
 import { RentalAssetCard } from "@/components/RentalAssetCard";
-import { computeDays, computeLineTotal } from "@/utils/pricing";
 import { DiscountCodeInput } from "@/components/DiscountCodeInput";
 import PaymentSuccessDialog from "@/components/PaymentSuccessDialog";
+import { makeEscrowDeposit, verifySession } from "@/services/backend";
 import { PaymentMethodTile, PaymentMethodType } from "@/components/PaymentMethodTile";
+import { computeDays, computeLineTotal, computeSecurityDeposit } from "@/utils/pricing";
 
 // ── Example SVG icons ────────────────────────────────────────────────────────
 
@@ -52,10 +54,22 @@ const DISCOUNT_RATE = 0.1;
 const pricingUnitAbbrev = (unit: string) =>
   unit === "week" ? "wk" : unit === "semester" ? "sem" : unit === "month" ? "mth" : unit;
 
+// "25-02-2025, 13:22:18" — matches PaymentSuccessDialog's documented format.
+const formatPaymentTime = (iso: string) => {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};
+
+// Not surfaced as a choice anywhere in this flow yet — every booking made
+// here is a straight rental, not a consultation.
+const CONSULTATION_MODE = 1;
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 function CheckoutPageInner() {
   const searchParams = useSearchParams();
+  const { getToken } = useAuth();
 
   // Everything the asset details page hands over via the URL when the renter
   // taps "Place order" there.
@@ -65,7 +79,10 @@ function CheckoutPageInner() {
   const rate = Number(searchParams.get("rate") ?? 0);
   const pricingUnit = searchParams.get("pricingUnit") ?? "day";
   const quantity = Number(searchParams.get("quantity") ?? 1);
-  const securityDeposit = Number(searchParams.get("securityDeposit") ?? 0);
+  // Per-unit deposit as listed on the asset — scaled below by the same
+  // bulk-quantity tapering the rental rate uses, not multiplied straight
+  // through by quantity.
+  const baseSecurityDeposit = Number(searchParams.get("securityDeposit") ?? 0);
   const paramStartDate = searchParams.get("startDate") ?? "";
   const paramEndDate = searchParams.get("endDate") ?? "";
 
@@ -96,6 +113,11 @@ function CheckoutPageInner() {
   const lineTotal = useMemo(
     () => computeLineTotal(rate, quantity, pricingUnit, startDate, endDate),
     [rate, quantity, pricingUnit, startDate, endDate]
+  );
+
+  const securityDeposit = useMemo(
+    () => computeSecurityDeposit(baseSecurityDeposit, quantity),
+    [baseSecurityDeposit, quantity]
   );
 
   // Always expressed in days, regardless of the asset's own pricingUnit —
@@ -135,28 +157,48 @@ function CheckoutPageInner() {
     ...(securityDeposit > 0 ? ([["Security Deposit", `₵${securityDeposit.toFixed(2)}`]] as [string, string][]) : []),
   ];
 
-  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
-
-  const processPayment = async () => {
-    await delay(4000);
-
-    return {
-      amount: `₵${total.toFixed(2)}`,
-      refNumber: "930345",
-      paymentTime: "12:03AM",
-      paymentMethod: "MOMO",
-      senderName: "Priscilla",
-      totalAmount: `₵${total.toFixed(2)}`,
-    };
-  };
-
   const handlePay = async () => {
+    if (!hasOrder || !startDate || !endDate) return;
+
     setIsPaying(true);
 
     try {
-      const result = await processPayment();
+      const token = await getToken();
+      if (!token) {
+        throw new Error("Not signed in");
+      }
 
-      setPaymentResult(result);
+      // Trusted user id from the verified session, not anything the client
+      // could tamper with — same rule the vendor upload flow follows.
+      const session = await verifySession(token);
+
+      const result = await makeEscrowDeposit(token, {
+        userId: session.user_id,
+        assetId,
+        amount: Number(total.toFixed(2)),
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        consultationMode: CONSULTATION_MODE,
+        securityDeposit: Number(securityDeposit.toFixed(2)),
+      });
+
+      if (!result.success || !result.data) {
+        throw new Error(result.error ?? "Payment initiation failed");
+      }
+
+      const { data } = result;
+      const formattedAmount = `₵${Number(data.amount).toFixed(2)}`;
+
+      setPaymentResult({
+        amount: formattedAmount,
+        refNumber: data.id,
+        paymentTime: formatPaymentTime(data.createdAt),
+        paymentMethod: "Mobile Money",
+        senderName: data.name,
+        totalAmount: formattedAmount,
+      });
+    } catch (error) {
+      console.error(error);
     } finally {
       setIsPaying(false);
     }
@@ -275,7 +317,7 @@ function CheckoutPageInner() {
             <button
               type="button"
               onClick={handlePay}
-              disabled={!hasOrder}
+              disabled={!hasOrder || !startDate || !endDate || isPaying}
               className='mt-2 h-12 w-full rounded-2xl bg-gray-900 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dmSans-font cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed'
             >
               Pay ₵{total.toFixed(2)}
