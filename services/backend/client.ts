@@ -231,7 +231,7 @@ export async function makeEscrowDeposit(
   token: string,
   payload: EscrowDepositRequest
 ): Promise<ApiResponse<EscrowDepositResponse>> {
-  const response = await fetch(`${BASE_URL}payment`, {
+  const response = await fetch(`${BASE_URL}payment/escrowAssetPayment`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
