@@ -77,13 +77,13 @@ const page = async () => {
                     <tbody>
                         {rentalRows.map((row) => (
                             <tr
-                                key={row.transactionId}
+                                key={row.txId}
                                 className='border-b border-[#F1F5F9] hover:bg-[#F8FAFC] transition'
                             >
 
                                 {/* ID */}
                                 <td className='px-6 py-4 text-sm text-[#374151]'>
-                                    {row.transactionId}
+                                    {row.txId}
                                 </td>
 
                                 {/* Quantity */}
@@ -99,14 +99,14 @@ const page = async () => {
 
                                         <Image
                                             src={row.profilePic}
-                                            alt={row.name}
+                                            alt={row.renterName}
                                             width={28}
                                             height={28}
                                             className='rounded-full'
                                         />
 
                                         <span className='text-sm text-[#374151]'>
-                                            {row.name}
+                                            {row.renterName}
                                         </span>
                                     </div>
                                 </td>
@@ -124,7 +124,7 @@ const page = async () => {
 
                                         <span className='text-sm text-[#6B7280]'>
                                             {
-                                                row.status === 'Completed' && (
+                                                row.status === 'completed' && (
                                                     <div className='flex items-center gap-4'>
                                                         <StatusCircle color='#52C93F' />
                                                         Completed
@@ -133,7 +133,7 @@ const page = async () => {
                                             }
 
                                             {
-                                                row.status === 'Active' && (
+                                                row.status === 'active' && (
                                                     <div className='flex items-center gap-4'>
                                                         <StatusCircle color='#1657FF' />
                                                         Active
@@ -142,7 +142,7 @@ const page = async () => {
                                             }
 
                                             {
-                                                row.status === 'Pending' && (
+                                                row.status === 'pending' && (
                                                     <div className='flex items-center gap-4'>
                                                         <StatusCircle color='#3E4E50' />
                                                         Pending
@@ -155,7 +155,7 @@ const page = async () => {
 
                                 {/* Earnings */}
                                 <td className='px-6 py-4 text-sm text-[#6B7280]'>
-                                    ₵ {Number(row.amount).toFixed(2)}
+                                    ₵ {Number(row.earning).toFixed(2)}
                                 </td>
 
                                 {/* Action */}
