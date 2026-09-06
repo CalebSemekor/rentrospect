@@ -10,6 +10,8 @@
 //   paymentMethod – e.g. "Bank Transfer"
 //   senderName    – e.g. "Scylla Kwofie"
 //   totalAmount   – e.g. "GHC 436.50"
+//   paymentUrl    – Aza checkout link; when set, shows a "Complete Payment"
+//                    button that opens it in a new tab
 //   onContinue    – called when the Continue button is pressed
 
 import React from "react";
@@ -22,6 +24,7 @@ interface PaymentSuccessDialogProps {
   paymentMethod: string;
   senderName: string;
   totalAmount: string;
+  paymentUrl?: string;
   onContinue: () => void;
 }
 
@@ -84,6 +87,7 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
   paymentMethod,
   senderName,
   totalAmount,
+  paymentUrl,
   onContinue,
 }) => {
   if (!open) return null;
@@ -144,11 +148,27 @@ export const PaymentSuccessDialog: React.FC<PaymentSuccessDialogProps> = ({
           />
         </div>
 
+        {/* Complete Payment — opens the Aza-hosted checkout in a new tab */}
+        {paymentUrl && (
+          <a
+            href={paymentUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-12 w-full items-center justify-center rounded-2xl bg-teal-600 text-sm font-semibold text-white hover:bg-teal-700 transition-colors dmSans-font"
+          >
+            Complete Payment
+          </a>
+        )}
+
         {/* Continue button */}
         <button
           type="button"
           onClick={onContinue}
-          className="h-12 w-full rounded-2xl bg-teal-600 text-sm font-semibold text-white hover:bg-teal-700 transition-colors dmSans-font"
+          className={
+            paymentUrl
+              ? "h-12 w-full rounded-2xl bg-gray-100 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition-colors dmSans-font"
+              : "h-12 w-full rounded-2xl bg-teal-600 text-sm font-semibold text-white hover:bg-teal-700 transition-colors dmSans-font"
+          }
         >
           Continue
         </button>

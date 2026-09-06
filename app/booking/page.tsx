@@ -96,6 +96,7 @@ function CheckoutPageInner() {
     paymentMethod: string;
     senderName: string;
     totalAmount: string;
+    paymentUrl: string;
   }>(null);
   const [discountCode, setDiscountCode] = useState('');
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
@@ -196,6 +197,7 @@ function CheckoutPageInner() {
         paymentMethod: "Mobile Money",
         senderName: data.name,
         totalAmount: formattedAmount,
+        paymentUrl: `${process.env.NEXT_PUBLIC_AZA_PAYMENT_ROOT ?? ""}${data.id}`,
       });
     } catch (error) {
       console.error(error);
@@ -215,6 +217,7 @@ function CheckoutPageInner() {
         paymentMethod={paymentResult?.paymentMethod ?? ""}
         senderName={paymentResult?.senderName ?? ""}
         totalAmount={paymentResult?.totalAmount ?? ""}
+        paymentUrl={paymentResult?.paymentUrl}
         onContinue={() => setPaymentResult(null)} // or router.push("/") etc.
       />
       <main className="flex flex-col md:flex-row min-h-screen">
