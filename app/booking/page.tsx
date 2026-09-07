@@ -47,8 +47,8 @@ const PAYMENT_METHODS: { id: string; maskedNumber: string; methodType: PaymentMe
 // "~4% Renter Service Fee" line item quoted in the Payment Terms page
 // (Section 3.2) — that copy should be updated to reflect the 1.5% + 1% split
 // once it's final.
-const AZA_FEE_RATE = 0.015;
-const RENTROSPECT_FEE_RATE = 0.01;
+const AZA_FEE_RATE = 0.01;
+const RENTROSPECT_FEE_RATE = 0.001;
 const DISCOUNT_RATE = 0.1;
 
 const pricingUnitAbbrev = (unit: string) =>
