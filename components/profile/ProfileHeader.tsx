@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import type { VendorProfile } from '@/types/profile'
+import Link from 'next/link'
 
 interface ProfileHeaderProps {
     profile: VendorProfile
@@ -33,13 +34,14 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile }) => {
                         >
                             <Image width={16} height={16} alt='share' src='/svgs/profile/share.svg' />
                         </button>
-                        <button
+                        <Link
+                            href='/vendor/settings'
                             type='button'
                             aria-label='edit profile'
                             className='flex items-center justify-center size-9 rounded-full bg-white/80 backdrop-blur-sm cursor-pointer'
                         >
                             <Image width={16} height={16} alt='edit' src='/svgs/profile/edit.svg' />
-                        </button>
+                        </Link>
                     </div>
                 </div>
 
