@@ -3,7 +3,7 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Rentrospect',
-    short_name: 'NextPWA',
+    short_name: 'Rentrospect',
     description: 'Rent Smarter. Track Better. Earn More.',
     start_url: '/renter',
     display: 'standalone',      // Emulates a standalone native mobile app

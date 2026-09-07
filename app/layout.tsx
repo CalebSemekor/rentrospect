@@ -2,6 +2,7 @@ import {ClerkProvider} from "@clerk/nextjs";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Montserrat, DM_Sans, Plus_Jakarta_Sans, Poppins, Inter } from "next/font/google";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -57,12 +58,15 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Next.js PWA",
-  description: "Built with love",
+  title: "Rentrospect",
+  description: "Rent Smarter. Track Better. Earn More.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "NextPWA",
+    title: "Rentrospect",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
   },
 };
 
@@ -77,6 +81,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${dmSans.variable} ${plusJakartaSans.variable} ${poppins.variable} ${inter.variable} h-full antialiased bg-nearWhiteBg`}
     >
       <body className={`min-h-full flex flex-col ${montserrat.variable} bg-nearWhiteBg`}>
+        <ServiceWorkerRegister />
         <ClerkProvider>
           {children}
         </ClerkProvider>
