@@ -1,7 +1,6 @@
 import { VerifyPayment } from "@/types/payment";
 import ConfirmPaymentClient from "@/components/payments/ConfirmPaymentClient";
 
-
 async function getTransaction(uuid: string): Promise<VerifyPayment | null> {
     try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_MASTER}client/verifyPayment/${uuid}`, {

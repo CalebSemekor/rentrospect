@@ -16,6 +16,7 @@ export interface VerifyPayment {
     vendorEmail: string
     transactionId: string
     rentrospectFee: number
+    securityDeposit: number
 }
 
 export interface VendorPaymentSessionRes {
