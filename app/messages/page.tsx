@@ -6,6 +6,7 @@ import {
     getSavedMessages,
     getConversationMessages,
     getContactProfile,
+    verifySession,
 } from '@/services/backend'
 import type { ChatContact, CallLogEntry, SavedMessage, ChatMessage, ContactProfile } from '@/types/messages'
 
@@ -18,12 +19,14 @@ export default async function MessagesPage() {
     let savedMessages: SavedMessage[] = []
     let initialMessages: ChatMessage[] = []
     let initialProfile: ContactProfile | null = null
+    let role: 'renter' | 'vendor' | null = null
 
     if (token) {
-        [contacts, callLog, savedMessages] = await Promise.all([
+        [contacts, callLog, savedMessages, role] = await Promise.all([
             getChatList(token),
             getCallLog(token),
             getSavedMessages(token),
+            verifySession(token).then((session) => session.role).catch(() => null),
         ])
 
         if (contacts[0]) {
@@ -42,6 +45,7 @@ export default async function MessagesPage() {
             initialActiveContactId={contacts[0]?.id ?? null}
             initialMessages={initialMessages}
             initialProfile={initialProfile}
+            role={role}
         />
     )
 }

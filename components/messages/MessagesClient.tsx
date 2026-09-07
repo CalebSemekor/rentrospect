@@ -11,6 +11,9 @@ import {
     sendMessageAttachment,
     markConversationRead,
     toggleSavedMessage,
+    getMeetupQrCode,
+    getVendorDashboardTransactions,
+    findTransactionIdForRenter,
 } from '@/services/backend'
 import ChatList from './ChatList'
 import CallLogList from './CallLogList'
@@ -27,6 +30,7 @@ interface MessagesClientProps {
     initialActiveContactId: string | null
     initialMessages: ChatMessage[]
     initialProfile: ContactProfile | null
+    role: 'renter' | 'vendor' | null
 }
 
 const MessagesClient: React.FC<MessagesClientProps> = ({
@@ -36,6 +40,7 @@ const MessagesClient: React.FC<MessagesClientProps> = ({
     initialActiveContactId,
     initialMessages,
     initialProfile,
+    role,
 }) => {
     const { getToken } = useAuth()
 
@@ -53,6 +58,10 @@ const MessagesClient: React.FC<MessagesClientProps> = ({
     const [mobilePane, setMobilePane] = useState<MobilePane>('list')
     const [mobileTab, setMobileTab] = useState<MobileTab>('chats')
     const [searchQuery, setSearchQuery] = useState('')
+    const [showMeetupDialog, setShowMeetupDialog] = useState(false)
+    const [generatingMeetupCode, setGeneratingMeetupCode] = useState(false)
+    const [meetupQrUrl, setMeetupQrUrl] = useState<string | null>(null)
+    const [meetupError, setMeetupError] = useState<string | null>(null)
 
     const activeContact = useMemo<ChatContact | null>(
         () => contacts.find((contact) => contact.id === activeContactId) ?? null,
@@ -162,6 +171,46 @@ const MessagesClient: React.FC<MessagesClientProps> = ({
         }
     }
 
+    const handleGenerateMeetupCode = async () => {
+        if (!activeContact) return
+
+        setShowMeetupDialog(true)
+        setGeneratingMeetupCode(true)
+        setMeetupQrUrl(null)
+        setMeetupError(null)
+
+        const token = await getToken()
+        if (!token) {
+            setGeneratingMeetupCode(false)
+            return
+        }
+
+        // No direct link yet between a chat contact and a transaction — found
+        // by matching the renter's name against the vendor's own transaction
+        // history (see findTransactionIdForRenter for the matching rule).
+        const transactions = await getVendorDashboardTransactions(token)
+        const transactionId = findTransactionIdForRenter(transactions, activeContact.name)
+
+        if (!transactionId) {
+            setMeetupError(`No active rental found with ${activeContact.name}.`)
+            setGeneratingMeetupCode(false)
+            return
+        }
+
+        const qrUrl = await getMeetupQrCode(token, transactionId)
+        if (!qrUrl) setMeetupError("Couldn't generate a code. Try again.")
+
+        setMeetupQrUrl(qrUrl)
+        setGeneratingMeetupCode(false)
+    }
+
+    const handleCloseMeetupDialog = () => {
+        setShowMeetupDialog(false)
+        if (meetupQrUrl) URL.revokeObjectURL(meetupQrUrl)
+        setMeetupQrUrl(null)
+        setMeetupError(null)
+    }
+
     return (
         <main className='flex flex-col h-[calc(100vh-8.5rem)] md:h-[calc(100vh-9rem)] pb-4'>
             {/* Desktop layout */}
@@ -193,6 +242,13 @@ const MessagesClient: React.FC<MessagesClientProps> = ({
                             sendingAttachment={sendingAttachment}
                             onToggleSave={handleToggleSave}
                             onViewProfile={() => handleViewProfile(false)}
+                            canGenerateMeetupCode={role === 'vendor'}
+                            generatingMeetupCode={generatingMeetupCode}
+                            meetupQrUrl={meetupQrUrl}
+                            meetupError={meetupError}
+                            showMeetupDialog={showMeetupDialog}
+                            onGenerateMeetupCode={handleGenerateMeetupCode}
+                            onCloseMeetupDialog={handleCloseMeetupDialog}
                         />
                     ) : (
                         <div className='flex items-center justify-center h-full bg-arrowBackground/40 rounded-2xl'>
@@ -269,6 +325,13 @@ const MessagesClient: React.FC<MessagesClientProps> = ({
                         onToggleSave={handleToggleSave}
                         onViewProfile={() => handleViewProfile(true)}
                         onBack={() => setMobilePane('list')}
+                        canGenerateMeetupCode={role === 'vendor'}
+                        generatingMeetupCode={generatingMeetupCode}
+                        meetupQrUrl={meetupQrUrl}
+                        meetupError={meetupError}
+                        showMeetupDialog={showMeetupDialog}
+                        onGenerateMeetupCode={handleGenerateMeetupCode}
+                        onCloseMeetupDialog={handleCloseMeetupDialog}
                     />
                 )}
 

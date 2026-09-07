@@ -378,3 +378,54 @@ export async function postReviewReply(token: string, reviewId: string, comment: 
     return null;
   }
 }
+
+// --- Meetup QR Code (/messages) ---------------------------------------------
+// Lets a vendor generate a one-time QR code from within a chat thread for the
+// renter to scan at handoff/return. Unlike every other route in this file,
+// the response body IS the image (Content-Type: image/png), not JSON — it's
+// turned into an object URL for an <img> tag rather than parsed as JSON.
+// Caller is responsible for revoking the returned URL when done with it.
+// vendorId is deliberately not sent — the backend derives it from the Clerk
+// token itself.
+
+export async function getMeetupQrCode(token: string, transactionId: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${BASE_URL}vendor/generateQrCode`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ transactionId }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate meetup QR code');
+    }
+
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
+// There's no direct link yet between a chat contact and a specific rental
+// transaction, so the transaction is found by matching the renter's display
+// name against the vendor's transaction history. Ambiguous if a renter has
+// more than one transaction with this vendor — the currently-held one
+// (status "holding") wins since that's the one still awaiting a meetup;
+// otherwise falls back to the first name match.
+export function findTransactionIdForRenter(
+  transactions: DashboardTransaction[],
+  renterName: string
+): string | null {
+  const normalizedName = renterName.trim().toLowerCase();
+  const matches = transactions.filter((tx) => tx.renterName.trim().toLowerCase() === normalizedName);
+
+  if (matches.length === 0) return null;
+
+  const holding = matches.find((tx) => tx.status === 'holding');
+  return (holding ?? matches[0]).txId;
+}

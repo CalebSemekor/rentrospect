@@ -2,6 +2,13 @@ import Image from 'next/image'
 import type { ChatContact, ChatMessage } from '@/types/messages'
 import MessageBubble from './MessageBubble'
 import MessageInput from './MessageInput'
+import MeetupQrDialog from './MeetupQrDialog'
+
+const QrIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
+    <svg viewBox="0 0 20 20" fill="currentColor" {...props}>
+        <path d="M3 3h5v5H3V3zm1 1v3h3V4H4zm-1 8h5v5H3v-5zm1 1v3h3v-3H4zm8-9h5v5h-5V3zm1 1v3h3V4h-3zM12 12h2v2h-2v-2zm3 0h2v2h-2v-2zm-3 3h2v2h-2v-2zm3 0h2v2h-2v-2z" />
+    </svg>
+)
 
 interface MessageThreadProps {
     contact: ChatContact
@@ -13,6 +20,13 @@ interface MessageThreadProps {
     onToggleSave: (message: ChatMessage) => void
     onViewProfile: () => void
     onBack?: () => void
+    canGenerateMeetupCode?: boolean
+    generatingMeetupCode?: boolean
+    meetupQrUrl?: string | null
+    meetupError?: string | null
+    showMeetupDialog?: boolean
+    onGenerateMeetupCode?: () => void
+    onCloseMeetupDialog?: () => void
 }
 
 const MessageThread: React.FC<MessageThreadProps> = ({
@@ -25,6 +39,13 @@ const MessageThread: React.FC<MessageThreadProps> = ({
     onToggleSave,
     onViewProfile,
     onBack,
+    canGenerateMeetupCode,
+    generatingMeetupCode,
+    meetupQrUrl,
+    meetupError,
+    showMeetupDialog,
+    onGenerateMeetupCode,
+    onCloseMeetupDialog,
 }) => {
     return (
         <div className='flex flex-col h-full min-h-0 bg-arrowBackground/40 rounded-2xl overflow-hidden'>
@@ -64,23 +85,45 @@ const MessageThread: React.FC<MessageThreadProps> = ({
                 </button>
             </div>
 
-            <div className='flex flex-col gap-4 flex-1 overflow-y-auto min-h-0 px-4 py-4'>
-                {loading ? (
-                    <p className='dmSans-font text-sm text-smallGreyText text-center py-10'>Loading messages...</p>
-                ) : messages.length === 0 ? (
-                    <p className='dmSans-font text-sm text-smallGreyText text-center py-10'>
-                        No messages yet — say hello to {contact.name.split(' ')[0]}.
-                    </p>
-                ) : (
-                    messages.map((message) => (
-                        <MessageBubble key={message.id} message={message} onToggleSave={onToggleSave} />
-                    ))
+            <div className='relative flex-1 min-h-0'>
+                <div className='flex flex-col gap-4 h-full overflow-y-auto px-4 py-4'>
+                    {loading ? (
+                        <p className='dmSans-font text-sm text-smallGreyText text-center py-10'>Loading messages...</p>
+                    ) : messages.length === 0 ? (
+                        <p className='dmSans-font text-sm text-smallGreyText text-center py-10'>
+                            No messages yet — say hello to {contact.name.split(' ')[0]}.
+                        </p>
+                    ) : (
+                        messages.map((message) => (
+                            <MessageBubble key={message.id} message={message} onToggleSave={onToggleSave} />
+                        ))
+                    )}
+                </div>
+
+                {canGenerateMeetupCode && (
+                    <button
+                        type='button'
+                        onClick={onGenerateMeetupCode}
+                        disabled={generatingMeetupCode}
+                        className='absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 whitespace-nowrap rounded-full bg-teal-600 px-5 py-2.5 text-xs font-semibold text-white shadow-lg hover:bg-teal-700 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed dmSans-font'
+                    >
+                        <QrIcon className='size-4' aria-hidden='true' />
+                        {generatingMeetupCode ? 'Generating...' : 'Generate Meetup Code'}
+                    </button>
                 )}
             </div>
 
             <div className='px-4 pb-4'>
                 <MessageInput onSend={onSend} onSendAttachment={onSendAttachment} sendingAttachment={sendingAttachment} />
             </div>
+
+            <MeetupQrDialog
+                open={Boolean(showMeetupDialog)}
+                loading={Boolean(generatingMeetupCode)}
+                qrCodeUrl={meetupQrUrl ?? null}
+                errorMessage={meetupError}
+                onClose={() => onCloseMeetupDialog?.()}
+            />
         </div>
     )
 }
