@@ -211,8 +211,10 @@ const MessagesClient: React.FC<MessagesClientProps> = ({
         setMeetupError(null)
     }
 
+    // Mobile height leaves extra room at the bottom for NavBar's fixed
+    // bottom pill (not present on desktop, where it's inline up top).
     return (
-        <main className='flex flex-col h-[calc(100vh-8.5rem)] md:h-[calc(100vh-9rem)] pb-4'>
+        <main className='flex flex-col h-[calc(100vh-13.5rem)] md:h-[calc(100vh-9rem)] pb-4'>
             {/* Desktop layout */}
             <div className='hidden md:flex gap-4 h-full min-h-0'>
                 <div className='flex flex-col w-80 shrink-0 h-full min-h-0'>

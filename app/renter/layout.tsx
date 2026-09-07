@@ -8,7 +8,7 @@ export default function RentalLayout({
 }) {
     return (
         <RoleGate role='renter'>
-            <section className='flex flex-col min-h-full px-4 md:px-30'>
+            <section className='flex flex-col min-h-full px-4 md:px-30 pb-24 md:pb-0'>
                 <NavBar
                     location='Kumasi '
                 />

@@ -6,6 +6,57 @@ import NavButtonLink from './NavButtonLink'
 import { usePathname } from 'next/navigation'
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 
+// The same five links are shown inline in the desktop nav and as a fixed
+// bottom bar on mobile — kept in one place so the two don't drift apart.
+const MiddleNavLinks = ({ pathname }: { pathname: string }) => (
+    <>
+        <NavButtonLink
+            href='/renter'
+            alt='home icon'
+            label='Dashboard'
+            active={pathname === '/renter'}
+            icon='/svgs/nav/home-active.svg'
+            inactiveIcon='/svgs/nav/home.svg'
+        />
+
+        <NavButtonLink
+            href='/renter/rentals'
+            label='Rentals'
+            alt='folder icon'
+            icon='/svgs/nav/folder-active.svg'
+            inactiveIcon='/svgs/nav/folder.svg'
+            active={pathname.startsWith('/renter/rentals')}
+        />
+
+        <NavButtonLink
+            href='/renter/wallet'
+            active={pathname === '/renter/wallet'}
+            label='Wallet'
+            alt='wallet icon'
+            icon='/svgs/nav/wallet-active.svg'
+            inactiveIcon='/svgs/nav/wallet.svg'
+        />
+
+        <NavButtonLink
+            href='/messages'
+            label='Messages'
+            alt='messages icon'
+            active={pathname === '/messages'}
+            icon='/svgs/nav/messages-active.svg'
+            inactiveIcon='/svgs/nav/messages.svg'
+        />
+
+        <NavButtonLink
+            href='/renter/settings'
+            alt='settings'
+            label='Settings'
+            icon='/svgs/nav/user-active.svg'
+            active={pathname.startsWith('/renter/settings')}
+            inactiveIcon='/svgs/nav/user.svg'
+        />
+    </>
+)
+
 const NavBar = ({ location }: { location: string }) => {
     const pathname = usePathname()
     const { isSignedIn } = useUser();
@@ -42,53 +93,9 @@ const NavBar = ({ location }: { location: string }) => {
                     </div>
                 </div>
 
-                {/* Middle Nav */}
+                {/* Middle Nav — desktop only; the mobile version is a fixed bottom bar, rendered below */}
                 <div className='hidden md:flex p-2 gap-4 bg-[#00000033] z-2 rounded-[2.5rem]'>
-
-                    <NavButtonLink
-                        href='/renter'
-                        alt='home icon'
-                        label='Dashboard'
-                        active={pathname === '/renter'}
-                        icon='/svgs/nav/home-active.svg'
-                        inactiveIcon='/svgs/nav/home.svg'
-                    />
-
-                    <NavButtonLink
-                        href='/renter/rentals'
-                        label='Rentals'
-                        alt='folder icon'
-                        icon='/svgs/nav/folder-active.svg'
-                        inactiveIcon='/svgs/nav/folder.svg'
-                        active={pathname.startsWith('/renter/rentals')}
-                    />
-
-                    <NavButtonLink
-                        href='/renter/wallet'
-                        active={pathname === '/renter/wallet'}
-                        label='Wallet'
-                        alt='wallet icon'
-                        icon='/svgs/nav/wallet-active.svg'
-                        inactiveIcon='/svgs/nav/wallet.svg'
-                    />
-
-                    <NavButtonLink
-                        href='/messages'
-                        label='Messages'
-                        alt='messages icon'
-                        active={pathname === '/messages'}
-                        icon='/svgs/nav/messages-active.svg'
-                        inactiveIcon='/svgs/nav/messages.svg'
-                    />
-
-                    <NavButtonLink
-                        href='/renter/settings'
-                        alt='settings'
-                        label='Settings'
-                        icon='/svgs/nav/user-active.svg'
-                        active={pathname.startsWith('/renter/settings')}
-                        inactiveIcon='/svgs/nav/user.svg'
-                    />
+                    <MiddleNavLinks pathname={pathname} />
                 </div>
 
                 {/* Right */}
@@ -142,6 +149,13 @@ const NavBar = ({ location }: { location: string }) => {
                 </div>
             </nav>
             <SearchBar />
+
+            {/* Middle Nav — mobile only, pinned to the bottom of the screen instead of inline at the top.
+                Tighter gap than the desktop pill, plus overflow-x-auto as a safety net on narrow phones
+                since one item's label expands when active. */}
+            <div className='flex md:hidden fixed bottom-4 inset-x-4 z-40 justify-center gap-1 p-2 bg-[#00000033] rounded-[2.5rem] overflow-x-auto'>
+                <MiddleNavLinks pathname={pathname} />
+            </div>
         </>
     )
 }
