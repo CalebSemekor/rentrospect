@@ -1,6 +1,6 @@
 import type { LoneAsset } from '@/types/asset';
 import type { ChatContact, ChatMessage, CallLogEntry, ContactProfile, SavedMessage } from '@/types/messages';
-import { BASE_URL, type ApiResponse } from './base';
+import { BASE_URL, apiFetch, parseApiResponse, type ApiResponse } from './base';
 
 export * from './vendor';
 export * from './client';
@@ -18,7 +18,7 @@ interface LoneAssetResponse extends Omit<LoneAsset, 'rate' | 'securityDeposit'> 
 // carries an `isPrimary` flag per image — the primary one is the hero image.
 export async function getAssetById(id: string): Promise<LoneAsset | null> {
   try {
-    const response = await fetch(`${BASE_URL}assets/getAsset/${id}`, {
+    const response = await apiFetch(`${BASE_URL}assets/getAsset/${id}`, {
       method: 'GET',
     });
 
@@ -47,7 +47,7 @@ export interface VerifiedSession {
 }
 
 export async function verifySession(token: string): Promise<VerifiedSession> {
-  const response = await fetch(`${BASE_URL}auth/verifySession`, {
+  const response = await apiFetch(`${BASE_URL}auth/verifySession`, {
     method: 'GET',
     cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
     headers: {
@@ -67,7 +67,7 @@ export interface WalletBalance {
 }
 
 export async function getUserBalance(token: string): Promise<WalletBalance> {
-  const response = await fetch(`${BASE_URL}client/userBalances`, {
+  const response = await apiFetch(`${BASE_URL}client/userBalances`, {
     method: 'GET',
     cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
     headers: {
@@ -79,22 +79,22 @@ export async function getUserBalance(token: string): Promise<WalletBalance> {
 
 // Phone Verification
 export async function sendPhoneNumber(clerkId: string, phoneNumber: string): Promise<ApiResponse<void>> {
-  const response = await fetch(`${BASE_URL}webhooks/client/sendPhoneNumber`, {
+  const response = await apiFetch(`${BASE_URL}webhooks/client/sendPhoneNumber`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ clerk_id: clerkId, phone_number: phoneNumber }),
   });
-  return response.json();
+  return parseApiResponse<void>(response);
 }
 
 // SMS Code Verification
 export async function verifySmsCode(clerkId: string, code: string): Promise<ApiResponse<void>> {
-  const response = await fetch(`${BASE_URL}client/verifySmsCode`, {
+  const response = await apiFetch(`${BASE_URL}client/verifySmsCode`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ clerk_id: clerkId, code }),
   });
-  return response.json();
+  return parseApiResponse<void>(response);
 }
 
 // --- Messages (/messages) --------------------------------------------------
@@ -110,7 +110,7 @@ export async function verifySmsCode(clerkId: string, code: string): Promise<ApiR
 
 export async function getChatList(token: string): Promise<ChatContact[]> {
   try {
-    const response = await fetch(`${BASE_URL}client/messages/contacts`, {
+    const response = await apiFetch(`${BASE_URL}client/messages/contacts`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -131,7 +131,7 @@ export async function getChatList(token: string): Promise<ChatContact[]> {
 
 export async function getConversationMessages(token: string, contactId: string): Promise<ChatMessage[]> {
   try {
-    const response = await fetch(`${BASE_URL}client/messagesThread/${contactId}`, {
+    const response = await apiFetch(`${BASE_URL}client/messagesThread/${contactId}`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -152,7 +152,7 @@ export async function getConversationMessages(token: string, contactId: string):
 
 export async function sendMessage(token: string, contactId: string, text: string): Promise<ChatMessage | null> {
   try {
-    const response = await fetch(`${BASE_URL}client/messagesThread/${contactId}`, {
+    const response = await apiFetch(`${BASE_URL}client/messagesThread/${contactId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -179,7 +179,7 @@ export async function sendMessageAttachment(token: string, contactId: string, fi
 
     // No Content-Type header — the browser sets multipart/form-data with the
     // correct boundary itself when the body is a FormData instance.
-    const response = await fetch(`${BASE_URL}client/messages/thread/${contactId}/attachment`, {
+    const response = await apiFetch(`${BASE_URL}client/messages/thread/${contactId}/attachment`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -203,7 +203,7 @@ export async function sendMessageAttachment(token: string, contactId: string, fi
 // backend if that's wrong.
 export async function toggleSavedMessage(token: string, messageId: string, saved: boolean): Promise<boolean> {
   try {
-    const response = await fetch(`${BASE_URL}client/messages/${messageId}/save`, {
+    const response = await apiFetch(`${BASE_URL}client/messages/${messageId}/save`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -221,7 +221,7 @@ export async function toggleSavedMessage(token: string, messageId: string, saved
 
 export async function markConversationRead(token: string, contactId: string): Promise<boolean> {
   try {
-    const response = await fetch(`${BASE_URL}client/messages/thread/${contactId}/read`, {
+    const response = await apiFetch(`${BASE_URL}client/messages/thread/${contactId}/read`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -237,7 +237,7 @@ export async function markConversationRead(token: string, contactId: string): Pr
 
 export async function getCallLog(token: string): Promise<CallLogEntry[]> {
   try {
-    const response = await fetch(`${BASE_URL}client/calls`, {
+    const response = await apiFetch(`${BASE_URL}client/calls`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -258,7 +258,7 @@ export async function getCallLog(token: string): Promise<CallLogEntry[]> {
 
 export async function getSavedMessages(token: string): Promise<SavedMessage[]> {
   try {
-    const response = await fetch(`${BASE_URL}client/messages/saved`, {
+    const response = await apiFetch(`${BASE_URL}client/messages/saved`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -279,7 +279,7 @@ export async function getSavedMessages(token: string): Promise<SavedMessage[]> {
 
 export async function getContactProfile(token: string, contactId: string): Promise<ContactProfile | null> {
   try {
-    const response = await fetch(`${BASE_URL}client/messages/contacts/${contactId}/profile`, {
+    const response = await apiFetch(`${BASE_URL}client/messages/contacts/${contactId}/profile`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {

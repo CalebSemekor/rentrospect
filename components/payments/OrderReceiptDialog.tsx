@@ -8,7 +8,8 @@
 //   projectCost         – e.g. "GH¢ 75.00"
 //   platformFee         – e.g. "GH¢ 3.00"
 //   processingFee       – e.g. "GH¢ 1.50"
-//   totalSum            – e.g. "GH¢ 79.50"
+//   securityDeposit     – e.g. "GH¢ 50.00"; omitted entirely when not set
+//   totalSum            – e.g. "GH¢ 79.50" — should already include securityDeposit
 //   paymentStatus       – badge on the Payment Status row, e.g. "Processing"
 //   onApplyDiscount     – called with the trimmed code string when Apply is pressed
 //   onContinue          – called when the Continue button is pressed
@@ -25,8 +26,10 @@ interface OrderReceiptDialogProps {
   projectCost?: string;
   platformFee?: string;
   processingFee?: string;
+  securityDeposit?: string;
   totalSum?: string;
   paymentStatus?: string;
+  continuing?: boolean;
   onApplyDiscount?: (code: string) => void;
   onContinue: () => void;
   onClose: () => void;
@@ -124,8 +127,10 @@ export const OrderReceiptDialog: React.FC<OrderReceiptDialogProps> = ({
   projectCost   = "GH¢ 75.00",
   platformFee   = "GH¢ 3.00",
   processingFee = "GH¢ 1.50",
+  securityDeposit,
   totalSum      = "GH¢ 79.50",
   paymentStatus = "Processing",
+  continuing    = false,
   onApplyDiscount,
   onContinue,
   onClose,
@@ -176,6 +181,7 @@ export const OrderReceiptDialog: React.FC<OrderReceiptDialogProps> = ({
           <DetailRow label="Project Cost"              value={projectCost}   />
           <DetailRow label="Rentrospect Platform fee"  value={platformFee}   />
           <DetailRow label="Aza Processing fee"   value={processingFee} />
+          {securityDeposit && <DetailRow label="Security Deposit" value={securityDeposit} />}
 
           {/* Discount code input */}
           <InlineDiscountInput onApply={onApplyDiscount ?? (() => {})} />
@@ -192,9 +198,10 @@ export const OrderReceiptDialog: React.FC<OrderReceiptDialogProps> = ({
         <button
           type="button"
           onClick={onContinue}
-          className="h-12 w-full rounded-2xl bg-gray-900 text-sm font-semibold text-white hover:bg-gray-800 transition-colors dmSans-font"
+          disabled={continuing}
+          className="h-12 w-full rounded-2xl bg-gray-900 text-sm font-semibold text-white hover:bg-gray-800 transition-colors dmSans-font disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Continue
+          {continuing ? "Processing..." : "Continue"}
         </button>
 
         {/* Footer note */}

@@ -1,4 +1,4 @@
-import { BASE_URL, type ApiResponse } from './base';
+import { BASE_URL, apiFetch, parseApiResponse, type ApiResponse } from './base';
 import type { RentalTileProps } from '@/components/RentalTile';
 import type { NotificationSettings } from '@/types/notifications';
 import type { AccountDetails, SecuritySettings } from '@/types/account';
@@ -10,7 +10,7 @@ import type { AccountDetails, SecuritySettings } from '@/types/account';
 
 export async function getAccountDetails(token: string): Promise<AccountDetails | null> {
   try {
-    const response = await fetch(`${BASE_URL}client/account`, {
+    const response = await apiFetch(`${BASE_URL}client/account`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -41,7 +41,7 @@ export async function updateAccountDetails(
 
     // No Content-Type header — the browser sets multipart/form-data with the
     // correct boundary itself when the body is a FormData instance.
-    const response = await fetch(`${BASE_URL}client/account`, {
+    const response = await apiFetch(`${BASE_URL}client/account`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -58,7 +58,7 @@ export async function updateAccountDetails(
 
 export async function getSecuritySettings(token: string): Promise<SecuritySettings | null> {
   try {
-    const response = await fetch(`${BASE_URL}client/account/security`, {
+    const response = await apiFetch(`${BASE_URL}client/account/security`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -79,7 +79,7 @@ export async function getSecuritySettings(token: string): Promise<SecuritySettin
 
 export async function updateSecuritySettings(token: string, settings: SecuritySettings): Promise<boolean> {
   try {
-    const response = await fetch(`${BASE_URL}client/account/security`, {
+    const response = await apiFetch(`${BASE_URL}client/account/security`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -97,7 +97,7 @@ export async function updateSecuritySettings(token: string, settings: SecuritySe
 
 export async function deactivateAccount(token: string): Promise<boolean> {
   try {
-    const response = await fetch(`${BASE_URL}client/account/deactivate`, {
+    const response = await apiFetch(`${BASE_URL}client/account/deactivate`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -116,7 +116,7 @@ export async function deactivateAccount(token: string): Promise<boolean> {
 
 export async function getNotificationSettings(token: string): Promise<NotificationSettings | null> {
   try {
-    const response = await fetch(`${BASE_URL}client/notifications`, {
+    const response = await apiFetch(`${BASE_URL}client/notifications`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -137,7 +137,7 @@ export async function getNotificationSettings(token: string): Promise<Notificati
 
 export async function updateNotificationSettings(token: string, settings: NotificationSettings): Promise<boolean> {
   try {
-    const response = await fetch(`${BASE_URL}client/notifications`, {
+    const response = await apiFetch(`${BASE_URL}client/notifications`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -174,7 +174,7 @@ interface RentalTileResponse {
 
 export async function getClientRentals(token: string): Promise<RentalTileProps[]> {
   try {
-    const response = await fetch(`${BASE_URL}client/rentals`, {
+    const response = await apiFetch(`${BASE_URL}client/rentals`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -231,7 +231,7 @@ export async function makeEscrowDeposit(
   token: string,
   payload: EscrowDepositRequest
 ): Promise<ApiResponse<EscrowDepositResponse>> {
-  const response = await fetch(`${BASE_URL}payment/escrowAssetPayment`, {
+  const response = await apiFetch(`${BASE_URL}payment/escrowAssetPayment`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -239,5 +239,34 @@ export async function makeEscrowDeposit(
     },
     body: JSON.stringify(payload),
   });
-  return response.json();
+  return parseApiResponse<EscrowDepositResponse>(response);
+}
+
+// --- Payment (/client/initiatePayment) --------------------------------------
+// Confirms the transaction found at /confirmPayment/{uuid} (fetched via
+// client/verifyPayment/{uuid}) and actually kicks off the charge — releasing
+// the escrowed funds to the vendor, hence the "recipient" fields below.
+
+export interface InitiatePaymentResponse {
+  id: string;
+  recipient: string;
+  recipientUserId: string;
+  amount: string; // decimal.Decimal — quoted string, same gotcha as elsewhere
+  currency: string;
+  note: string;
+  reference: string;
+  status: string;
+  failureReason: string;
+}
+
+export async function initiatePayment(token: string, uuid: string): Promise<ApiResponse<InitiatePaymentResponse>> {
+  const response = await apiFetch(`${BASE_URL}client/initiatePayment`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ uuid }),
+  });
+  return parseApiResponse<InitiatePaymentResponse>(response);
 }

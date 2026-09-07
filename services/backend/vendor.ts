@@ -1,5 +1,5 @@
 import type { VendorProfile, CatalogAsset, VendorLogistics, ReviewableAsset, AssetReview, ReviewReply } from '@/types/profile';
-import { BASE_URL, type ApiResponse } from './base';
+import { BASE_URL, apiFetch, type ApiResponse } from './base';
 
 // Vendor Transaction History
 export interface VendorTransaction {
@@ -12,7 +12,7 @@ export interface VendorTransaction {
 }
 
 export async function getVendorTransactions(token: string): Promise<VendorTransaction[]> {
-  const response = await fetch(`${BASE_URL}vendor/txsHist`, {
+  const response = await apiFetch(`${BASE_URL}vendor/txsHist`, {
     method: 'GET',
     cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
     headers: {
@@ -35,7 +35,7 @@ export interface DashboardTransaction {
 }
 
 export async function getVendorDashboardTransactions(token: string): Promise<DashboardTransaction[]> {
-  const response = await fetch(`${BASE_URL}vendor/getRentalTransactions`, {
+  const response = await apiFetch(`${BASE_URL}vendor/getRentalTransactions`, {
     method: 'GET',
     cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
     headers: {
@@ -94,7 +94,7 @@ export async function completeVendorOnboarding(
 
   // No Content-Type header — the browser sets multipart/form-data with the
   // correct boundary itself when the body is a FormData instance.
-  const response = await fetch(`${BASE_URL}vendor/updateDetails`, {
+  const response = await apiFetch(`${BASE_URL}vendor/updateDetails`, {
     method: 'POST',
     body: formData,
   });
@@ -133,7 +133,7 @@ export async function uploadAsset(
 
   // No Content-Type header — the browser sets multipart/form-data with the
   // correct boundary itself when the body is a FormData instance.
-  const response = await fetch(`${BASE_URL}assets/upload`, {
+  const response = await apiFetch(`${BASE_URL}assets/upload`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -169,7 +169,7 @@ export async function updateAsset(
 
   // No Content-Type header — the browser sets multipart/form-data with the
   // correct boundary itself when the body is a FormData instance.
-  const response = await fetch(`${BASE_URL}assets/update/${assetDetails.assetId}`, {
+  const response = await apiFetch(`${BASE_URL}assets/update/${assetDetails.assetId}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -200,7 +200,7 @@ export interface VendorAsset {
 }
 
 export async function getVendorAssets(token: string): Promise<VendorAsset[]> {
-  const response = await fetch(`${BASE_URL}vendor/getAssets`, {
+  const response = await apiFetch(`${BASE_URL}vendor/getAssets`, {
     method: 'GET',
     cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
     headers: {
@@ -219,7 +219,7 @@ export async function getVendorAssets(token: string): Promise<VendorAsset[]> {
 
 export async function getVendorProfile(token: string): Promise<VendorProfile | null> {
   try {
-    const response = await fetch(`${BASE_URL}vendor/profile`, {
+    const response = await apiFetch(`${BASE_URL}vendor/profile`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -240,7 +240,7 @@ export async function getVendorProfile(token: string): Promise<VendorProfile | n
 
 export async function getVendorCatalog(token: string): Promise<CatalogAsset[]> {
   try {
-    const response = await fetch(`${BASE_URL}vendor/profile/catalog`, {
+    const response = await apiFetch(`${BASE_URL}vendor/profile/catalog`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -282,7 +282,7 @@ const formatClockTime = (time: string): string => {
 
 export async function getVendorLogistics(token: string): Promise<VendorLogistics | null> {
   try {
-    const response = await fetch(`${BASE_URL}vendor/profile/logistics`, {
+    const response = await apiFetch(`${BASE_URL}vendor/profile/logistics`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -317,7 +317,7 @@ export async function getVendorLogistics(token: string): Promise<VendorLogistics
 // to include paused/archived assets that still carry reviews.
 export async function getVendorReviewableAssets(token: string): Promise<ReviewableAsset[]> {
   try {
-    const response = await fetch(`${BASE_URL}vendor/profile/reviewableAssets`, {
+    const response = await apiFetch(`${BASE_URL}vendor/profile/reviewableAssets`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -338,7 +338,7 @@ export async function getVendorReviewableAssets(token: string): Promise<Reviewab
 
 export async function getAssetReviews(token: string, assetId: string): Promise<AssetReview[]> {
   try {
-    const response = await fetch(`${BASE_URL}vendor/profile/reviews/${assetId}`, {
+    const response = await apiFetch(`${BASE_URL}vendor/profile/reviews/${assetId}`, {
       method: 'GET',
       cache: 'no-store', // per-user response — must never enter Next's shared fetch cache
       headers: {
@@ -359,7 +359,7 @@ export async function getAssetReviews(token: string, assetId: string): Promise<A
 
 export async function postReviewReply(token: string, reviewId: string, comment: string): Promise<ReviewReply | null> {
   try {
-    const response = await fetch(`${BASE_URL}vendor/profile/reviews/${reviewId}/reply`, {
+    const response = await apiFetch(`${BASE_URL}vendor/profile/reviews/${reviewId}/reply`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -390,7 +390,7 @@ export async function postReviewReply(token: string, reviewId: string, comment: 
 
 export async function getMeetupQrCode(token: string, transactionId: string): Promise<string | null> {
   try {
-    const response = await fetch(`${BASE_URL}vendor/generateQrCode`, {
+    const response = await apiFetch(`${BASE_URL}vendor/generateQrCode`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
