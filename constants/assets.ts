@@ -4,7 +4,8 @@ export const assets: AssetTileProps[] = [
     {
         id: '1',
         title: 'MacBook Pro 14"',
-        price: '1,850',
+        rate: 1850,
+        pricingUnit: 'month',
         remarks: '20',
         ratings: 4.9,
         location: 'Accra, Ghana',
@@ -16,7 +17,8 @@ export const assets: AssetTileProps[] = [
     {
         id: '2',
         title: 'Office Space Rental',
-        price: '950/month',
+        rate: 950,
+        pricingUnit: 'month',
         // remarks: '14',
         ratings: 4.5,
         location: 'East Legon, Accra',
@@ -28,7 +30,8 @@ export const assets: AssetTileProps[] = [
     {
         id: '3',
         title: 'iPhone 15 Pro',
-        price: '1,100',
+        rate: 1100,
+        pricingUnit: 'month',
         remarks: '31',
         ratings: 4.8,
         location: 'Tema, Ghana',
@@ -40,7 +43,8 @@ export const assets: AssetTileProps[] = [
     {
         id: '4',
         title: 'Gaming Chair',
-        price: '$220',
+        rate: 220,
+        pricingUnit: 'month',
         remarks: 'Ergonomic chair with lumbar support',
         ratings: 4.1,
         location: 'Kumasi, Ghana',
