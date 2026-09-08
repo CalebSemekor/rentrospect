@@ -9,6 +9,12 @@ import CategoryTile from '@/components/CategoryTile';
 import ScrollSection from '@/components/ScrollSection';
 import { ovalCategories } from '@/constants/oval_categories';
 
+// This page is auth-protected by proxy.ts and its data is fetched no-store, so
+// it can never usefully be prerendered. Without this, `next build` tries to
+// render it statically and the whole build fails whenever the backend isn't
+// reachable from the build machine.
+export const dynamic = 'force-dynamic';
+
 async function getAssets(): Promise<Asset[]> {
     try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_MASTER}assets/getAssets`, {
